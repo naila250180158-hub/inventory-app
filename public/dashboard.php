@@ -10,7 +10,11 @@ require __DIR__ . '/../config/database.php';
 
 $total_products = (int) $pdo->query('SELECT COUNT(*) FROM products')->fetchColumn();
 $total_categories = (int) $pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn();
+$total_suppliers = (int) $pdo->query('SELECT COUNT(*) FROM suppliers')->fetchColumn();
 $total_stock = (int) $pdo->query('SELECT COALESCE(SUM(stock), 0) FROM products')->fetchColumn();
+$inventory_value = (float) $pdo->query('SELECT COALESCE(SUM(stock * price), 0) FROM products')->fetchColumn();
+$total_in = (int) $pdo->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_movements WHERE type = 'IN'")->fetchColumn();
+$total_out = (int) $pdo->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_movements WHERE type = 'OUT'")->fetchColumn();
 
 $low_stock = $pdo->query(
     'SELECT sku, name, stock, minimum_stock
@@ -18,6 +22,8 @@ $low_stock = $pdo->query(
      WHERE stock <= minimum_stock
      ORDER BY stock ASC'
 )->fetchAll(PDO::FETCH_ASSOC);
+
+$is_admin = $_SESSION['user']['role'] === 'admin';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -31,21 +37,39 @@ $low_stock = $pdo->query(
     <p>
         <a href="kategori.php">Kategori</a> |
         <a href="produk.php">Produk</a> |
-        <a href="stok.php">Barang Masuk/Keluar</a>
+        <a href="supplier.php">Supplier</a> |
+        <a href="produk-supplier.php">Produk dan Supplier</a> |
+        <a href="stok.php">Barang Masuk/Keluar</a> |
+        <a href="laporan.php">Laporan</a>
     </p>
     <p>Selamat datang! Role kamu: <?= htmlspecialchars($_SESSION['user']['role']) ?></p>
 
     <h2>Ringkasan</h2>
     <table border="1" cellpadding="6">
         <tr>
-            <th>Jumlah Produk</th>
-            <th>Jumlah Kategori</th>
+            <th>Total Produk</th>
+            <th>Total Kategori</th>
+            <th>Total Supplier</th>
             <th>Total Stok</th>
         </tr>
         <tr>
             <td><?= $total_products ?></td>
             <td><?= $total_categories ?></td>
+            <td><?= $total_suppliers ?></td>
             <td><?= $total_stock ?></td>
+        </tr>
+    </table>
+
+    <table border="1" cellpadding="6">
+        <tr>
+            <th>Nilai Inventory</th>
+            <th>Total Barang Masuk</th>
+            <th>Total Barang Keluar</th>
+        </tr>
+        <tr>
+            <td>Rp <?= number_format($inventory_value, 0, ',', '.') ?></td>
+            <td><?= $total_in ?></td>
+            <td><?= $total_out ?></td>
         </tr>
     </table>
 
@@ -72,7 +96,7 @@ $low_stock = $pdo->query(
     <?php endif; ?>
 
     <p>
-        <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+        <?php if ($is_admin): ?>
             <a href="kelola-user.php">Kelola User</a> |
         <?php endif; ?>
         <a href="logout.php">Logout</a>
